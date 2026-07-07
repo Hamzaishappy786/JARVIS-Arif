@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#0D1B2E"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CHOOSE BACKGROUND"
+        android:textColor="#00D4FF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.15"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Gallery button — prominent, full width -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnGallery"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="📷   PICK FROM GALLERY"
+        android:textColor="#0A0F1E"
+        android:backgroundTint="#00D4FF"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:textSize="13sp"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="16dp"
+        app:cornerRadius="26dp" />
+
+    <!-- Divider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="14dp">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#1A3A5C" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="  OR PICK A COLOR  "
+            android:textColor="#334455"
+            android:textSize="10sp"
+            android:fontFamily="monospace" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#1A3A5C" />
+    </LinearLayout>
+
+    <!-- Color swatch row 1 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="10dp">
+
+        <View android:id="@+id/swatch0" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+        <View android:id="@+id/swatch1" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+        <View android:id="@+id/swatch2" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+        <View android:id="@+id/swatch3" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+    </LinearLayout>
+
+    <!-- Color swatch row 2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="4dp">
+
+        <View android:id="@+id/swatch4" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+        <View android:id="@+id/swatch5" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+        <View android:id="@+id/swatch6" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+        <View android:id="@+id/swatch7" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/swatch_bg" android:layout_margin="5dp" />
+    </LinearLayout>
+
+</LinearLayout>
