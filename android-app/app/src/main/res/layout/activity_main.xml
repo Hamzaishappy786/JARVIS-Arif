@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0F1E">
+
+    <!-- Background image (GONE by default) -->
+    <ImageView
+        android:id="@+id/bgImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <!-- Dark overlay so text stays readable -->
+    <View
+        android:id="@+id/bgOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:alpha="0.55"
+        android:visibility="gone" />
+
+    <!-- Main UI -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="JARVIS-Arif"
+            android:textColor="#00D4FF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="2dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="عارف"
+            android:textColor="#4A9EBF"
+            android:textSize="15sp"
+            android:gravity="center"
+            android:layout_marginBottom="14dp" />
+
+        <!-- Connection row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <EditText
+                android:id="@+id/etIp"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:hint="PC IP  e.g. 192.168.1.5"
+                android:inputType="text"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#445566"
+                android:background="@drawable/input_bg"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:fontFamily="monospace"
+                android:textSize="13sp"
+                android:layout_marginEnd="6dp" />
+
+            <EditText
+                android:id="@+id/etPort"
+                android:layout_width="80dp"
+                android:layout_height="44dp"
+                android:hint="Port"
+                android:text="5050"
+                android:inputType="number"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#445566"
+                android:background="@drawable/input_bg"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:fontFamily="monospace"
+                android:textSize="13sp"
+                android:layout_marginEnd="6dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnConnect"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="CONNECT"
+                android:textColor="#0A0F1E"
+                android:backgroundTint="#00D4FF"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:textSize="11sp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                app:cornerRadius="22dp" />
+        </LinearLayout>
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="● OFFLINE"
+            android:textColor="#FF4444"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="14dp" />
+
+        <!-- ── HEARD ── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HEARD"
+            android:textColor="#335566"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/tvHeard"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:text="—"
+            android:textColor="#7AAABB"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:background="@drawable/reply_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:gravity="center_vertical"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="10dp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <!-- ── ARIF REPLY ── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ARIF"
+            android:textColor="#335566"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/tvReply"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="—"
+            android:textColor="#00D4FF"
+            android:textSize="14sp"
+            android:background="@drawable/reply_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="10dp"
+            android:gravity="center_vertical" />
+
+        <!-- Background picker -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBackground"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="🎨  CHANGE BACKGROUND"
+            android:textColor="#00D4FF"
+            android:backgroundTint="#0D1B2E"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="4dp"
+            app:cornerRadius="20dp"
+            app:strokeColor="#1A3A5C"
+            app:strokeWidth="1dp" />
+
+        <!-- Spacer pushes waveform to bottom -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Hint above mic -->
+        <TextView
+            android:id="@+id/tvRecordHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HOLD TO TALK"
+            android:textColor="#334455"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.2"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Circular waveform + mic button at bottom -->
+        <FrameLayout
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="8dp">
+
+            <com.arif.jarvis.WaveformView
+                android:id="@+id/waveform"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <Button
+                android:id="@+id/btnTalk"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_gravity="center"
+                android:text="🎙"
+                android:textSize="30sp"
+                android:background="@drawable/mic_btn_idle"
+                android:elevation="4dp" />
+        </FrameLayout>
+
+    </LinearLayout>
+</FrameLayout>
