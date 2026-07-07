@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vector version of the JARVIS-Arif icon for Android drawable -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Background -->
+    <path android:fillColor="#080E1C"
+        android:pathData="M256,0 C397.4,0 512,114.6 512,256 C512,397.4 397.4,512 256,512 C114.6,512 0,397.4 0,256 C0,114.6 114.6,0 256,0 Z"/>
+
+    <!-- Outer ring -->
+    <path android:fillColor="#00000000"
+        android:strokeColor="#00D4FF"
+        android:strokeWidth="3"
+        android:strokeAlpha="0.4"
+        android:pathData="M256,16 C388.5,16 496,123.5 496,256 C496,388.5 388.5,496 256,496 C123.5,496 16,388.5 16,256 C16,123.5 123.5,16 256,16 Z"/>
+
+    <!-- Hexagon -->
+    <path android:fillColor="#050A18"
+        android:strokeColor="#00D4FF"
+        android:strokeWidth="3"
+        android:pathData="M256,100 L366,168 L366,344 L256,412 L146,344 L146,168 Z"/>
+
+    <!-- Alif letter area glow -->
+    <path android:fillColor="#00D4FF"
+        android:fillAlpha="0.07"
+        android:pathData="M326,250 C326,287.6 294.6,318 256,318 C217.4,318 186,287.6 186,250 C186,212.4 217.4,182 256,182 C294.6,182 326,212.4 326,250 Z"/>
+
+</vector>
