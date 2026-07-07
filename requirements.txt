@@ -1,0 +1,19 @@
+python-dotenv==1.0.1
+groq==1.4.0
+piper-tts==1.4.2
+sounddevice==0.4.7
+soundfile==0.12.1
+numpy==1.26.4
+psutil==6.1.0
+pygetwindow==0.0.9
+pywin32==308
+keyboard==0.13.5
+screen-brightness-control==0.23.0
+# torch is NOT installed here on purpose -- this venv was created with --system-site-packages
+# so it reuses the already-installed global torch==1.12.1+cu113 (proven working with this
+# machine's GPU/CUDA setup) instead of pulling a second multi-GB copy.
+# transformers/tokenizers ARE pinned here (shadowing the global copies) because the global
+# transformers==4.40.0 is broken there already (wants tokenizers<0.20, but tokenizers==0.22.2
+# is installed globally for some other tool) -- pre-existing, not caused by this project.
+transformers==4.40.0
+tokenizers==0.19.1
