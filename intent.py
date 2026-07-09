@@ -9,8 +9,8 @@ _client = Groq(api_key=GROQ_API_KEY)
 
 VALID_ACTIONS = {
     "create_folder", "create_file", "delete", "move", "copy",
-    "open_app", "close_app", "close_all", "list", "open_folder", "where_am_i",
-    "set_brightness", "none",
+    "open_app", "close_app", "close_all", "minimize_app", "minimize_all",
+    "list", "open_folder", "where_am_i", "set_brightness", "none",
 }
 
 SYSTEM_PROMPT = f"""You are the intent-parsing brain for "Arif", a Windows voice assistant.
@@ -31,6 +31,11 @@ Rules:
   output "path": "C:/Users/gamer/Desktop/Foo", NOT a separate "name" field. Never split a path
   into a parent + name across two args. The "name" key is ONLY used for open_app/close_app
   (the application's name, not a path component).
+- For open_app: set "name" to the plain app name the user said (e.g. "chrome", "discord",
+  "android studio"). Always set needs_confirmation: true and reply_urdu should say something
+  like "کیا میں [app name] کھولوں؟" so the user can confirm with haan/nahi.
+- For minimize_app: set "name" to the app the user wants minimized. Use minimize_all (empty args)
+  when they say "sab minimize karo" / "minimize everything" / "sab chupa do".
 - Paths must resolve within these allowed roots: {ALLOWED_ROOTS}. If the user's target isn't
   clearly one of these, still fill your best-guess absolute path under the most relevant root.
 - Set "needs_confirmation": true for any of: {sorted(CONFIRM_REQUIRED_ACTIONS)}, or when the
