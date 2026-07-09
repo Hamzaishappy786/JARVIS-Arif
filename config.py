@@ -28,7 +28,9 @@ LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE = LOG_DIR / "actions.log"
 CONVERSATION_LOG_FILE = LOG_DIR / "conversation.txt"
+functionalities
 HISTORY_FILE          = LOG_DIR / "history.json"
+main
 
 # Push-to-talk hotkey (hold to record, release to stop)
 RECORD_HOTKEY = "f9"
@@ -46,7 +48,10 @@ ALLOWED_ROOTS = [
 ]
 
 # Actions that must be voice-confirmed before executing.
+functionalities
 CONFIRM_REQUIRED_ACTIONS = {"delete", "move", "close_app", "close_all", "open_app"}
+CONFIRM_REQUIRED_ACTIONS = {"delete", "move", "close_app", "close_all"}
+main
 
 # Audio recording settings
 SAMPLE_RATE = 16000

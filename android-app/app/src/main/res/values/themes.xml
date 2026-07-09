@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.JARVISArif" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#00D4FF</item>
+        <item name="colorPrimaryVariant">#0A0F1E</item>
+        <item name="colorOnPrimary">#0A0F1E</item>
+        <item name="android:windowBackground">#0A0F1E</item>
+        <item name="android:statusBarColor">#0A0F1E</item>
+        <item name="android:navigationBarColor">#0A0F1E</item>
+    </style>
+
+    <style name="DarkDialog" parent="Theme.MaterialComponents.Dialog">
+        <item name="colorSurface">#0D1B2E</item>
+        <item name="colorOnSurface">#00D4FF</item>
+        <item name="android:textColorPrimary">#CCDDEE</item>
+        <item name="android:background">#0D1B2E</item>
+        <item name="dialogCornerRadius">24dp</item>
+    </style>
+</resources>

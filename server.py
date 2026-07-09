@@ -27,6 +27,7 @@ from config import TEMP_AUDIO_DIR, CONVERSATION_LOG_FILE
 from stt import transcribe_and_translate
 from intent import parse_intent
 from executor import execute
+from tts import synthesize_to_bytes
 
 HOST = "0.0.0.0"
 PORT = 5050
@@ -66,6 +67,12 @@ def _send_json(sock: socket.socket, data: dict):
     sock.sendall(struct.pack(">I", len(payload)) + payload)
 
 
+def _send_audio(sock: socket.socket, text: str):
+    """Synthesize Urdu text and send WAV bytes as a length-prefixed packet."""
+    wav_bytes = synthesize_to_bytes(text)
+    sock.sendall(struct.pack(">I", len(wav_bytes)) + wav_bytes)
+
+
 def _handle_client(conn: socket.socket, addr):
     print(f"[server] connected: {addr}")
     try:
@@ -78,8 +85,10 @@ def _handle_client(conn: socket.socket, addr):
             _log("You", english_text)
 
             if not english_text.strip():
-                _send_json(conn, {"reply_urdu": "معاف کیجیے، سمجھ نہیں آیا۔", "action": "none",
+                reply = "معاف کیجیے، سمجھ نہیں آیا۔"
+                _send_json(conn, {"reply_urdu": reply, "action": "none",
                                   "result": "", "heard": "", "needs_confirmation": False})
+                _send_audio(conn, reply)
                 continue
 
             action = parse_intent(english_text)
@@ -95,13 +104,16 @@ def _handle_client(conn: socket.socket, addr):
                     "reply_urdu": confirm_prompt,
                     "needs_confirmation": True,
                 })
+                _send_audio(conn, confirm_prompt)
                 # Wait for the user's yes/no audio
                 confirm_path = _recv_audio(conn)
                 confirm_text = transcribe_and_translate(confirm_path).lower()
                 _log("You", confirm_text)
                 if not any(w in confirm_text for w in YES_WORDS):
-                    _send_json(conn, {"reply_urdu": "ٹھیک ہے، منسوخ کر دیا۔", "action": "cancelled",
+                    cancel_reply = "ٹھیک ہے، منسوخ کر دیا۔"
+                    _send_json(conn, {"reply_urdu": cancel_reply, "action": "cancelled",
                                       "result": "", "heard": confirm_text, "needs_confirmation": False})
+                    _send_audio(conn, cancel_reply)
                     continue
 
             # ── Step 3: execute ───────────────────────────────────────────────
@@ -121,15 +133,18 @@ def _handle_client(conn: socket.socket, addr):
                 "reply_urdu": reply_urdu,
                 "needs_confirmation": False,
             })
+            _send_audio(conn, reply_urdu)
 
     except ConnectionError as e:
         print(f"[server] disconnected: {addr} ({e})")
     except Exception as e:
         print(f"[server] error: {e}")
         try:
-            _send_json(conn, {"reply_urdu": "معاف کیجیے، سرور پر کچھ مسئلہ ہو گیا۔",
+            err_reply = "معاف کیجیے، سرور پر کچھ مسئلہ ہو گیا۔"
+            _send_json(conn, {"reply_urdu": err_reply,
                               "action": "error", "result": str(e), "heard": "",
                               "needs_confirmation": False})
+            _send_audio(conn, err_reply)
         except Exception:
             pass
     finally:
