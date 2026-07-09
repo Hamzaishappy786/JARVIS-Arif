@@ -1,8 +1,7 @@
 import shutil
 from pathlib import Path
 
-from config import ActionError
-from guard import require_allowed
+from guard import ActionError, require_allowed
 
 
 def delete(args: dict) -> str:
