@@ -7,6 +7,49 @@ from guard import require_allowed
 # Shared state: last folder Arif navigated to.
 _current_dir = DEFAULT_CWD
 
+# Known folder friendly names in Urdu
+_KNOWN = {
+    "desktop":   "ڈیسک ٹاپ",
+    "downloads": "ڈاؤن لوڈز",
+    "documents": "دستاویزات",
+    "pictures":  "تصاویر",
+    "music":     "موسیقی",
+    "videos":    "ویڈیوز",
+    "users":     None,   # skip — not meaningful on its own
+}
+
+
+def path_to_urdu(raw_path: str) -> str:
+    """
+    Convert a Windows path to a short natural Urdu location sentence.
+    e.g. C:\\Users\\gamer        → "میں C ڈرائیو کے gamer فولڈر میں ہوں"
+         C:\\Users\\gamer\\Desktop → "میں C ڈرائیو کے ڈیسک ٹاپ پر ہوں"
+         D:\\JARVIS-ARIF          → "میں D ڈرائیو کے JARVIS-ARIF فولڈر میں ہوں"
+    """
+    p = Path(raw_path)
+    parts = list(p.parts)          # e.g. ['C:\\', 'Users', 'gamer', 'Desktop']
+
+    # Drive letter
+    drive = parts[0].rstrip("\\:/").upper() if parts else "C"
+
+    # Skip uninformative middle segments (Users) and find the last meaningful part
+    meaningful = [
+        part for part in parts[1:]
+        if _KNOWN.get(part.lower()) is not None   # known with a nice name
+        or part.lower() not in _KNOWN             # unknown name → keep it
+    ]
+
+    if not meaningful:
+        return f"میں {drive} ڈرائیو پر ہوں"
+
+    last = meaningful[-1]
+    urdu_name = _KNOWN.get(last.lower(), last)   # translate if known, else keep original
+
+    # "par" for known special folders, "mein" for generic folders
+    postfix = "پر" if last.lower() in _KNOWN else "فولڈر میں"
+
+    return f"میں {drive} ڈرائیو کے {urdu_name} {postfix} ہوں"
+
 
 def get_current_dir() -> str:
     return _current_dir

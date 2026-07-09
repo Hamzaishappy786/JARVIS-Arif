@@ -9,6 +9,8 @@ import deletion
 import mover
 import navigator
 import apps
+import close_app as close_app_mod
+import minimize as minimize_mod
 import brightness as brightness_mod
 
 from config import LOG_FILE
@@ -33,8 +35,10 @@ _ROUTES = {
     "where_am_i":     navigator.where_am_i,
     "list":           navigator.list_dir,
     "open_app":       apps.open_app,
-    "close_app":      apps.close_app,
-    "close_all":      apps.close_all,
+    "close_app":      close_app_mod.close_app,
+    "close_all":      close_app_mod.close_all,
+    "minimize_app":   minimize_mod.minimize_app,
+    "minimize_all":   minimize_mod.minimize_all,
     "set_brightness": _brightness_dispatch,
     "none":           lambda _: "no-op",
 }
