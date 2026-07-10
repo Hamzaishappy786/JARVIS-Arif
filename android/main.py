@@ -80,7 +80,8 @@ class _TermWave:
 
     def stop(self):
         self._stop.set()
-        self._thread.join(timeout=0.5)
+        if self._thread.is_alive():
+            self._thread.join(timeout=0.5)
         sys.stdout.write(" " * 60 + "\r")
         sys.stdout.flush()
 
