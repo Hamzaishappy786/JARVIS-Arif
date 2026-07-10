@@ -33,6 +33,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import android.media.AudioAttributes
+import android.media.AudioTrack
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.net.Socket
@@ -332,17 +334,11 @@ class MainActivity : AppCompatActivity() {
                 out.write(wav)
                 out.flush()
 
-                val inStream   = sock.getInputStream()
-                val lenBuf     = ByteArray(4)
-                inStream.read(lenBuf)
-                val respLen    = ByteBuffer.wrap(lenBuf).order(ByteOrder.BIG_ENDIAN).int
-                val respBuf    = ByteArray(respLen)
-                var totalRead  = 0
-                while (totalRead < respLen) {
-                    totalRead += inStream.read(respBuf, totalRead, respLen - totalRead)
-                }
+                val inStream = sock.getInputStream()
 
-                val json         = JSONObject(String(respBuf, Charsets.UTF_8))
+                // ── Packet 1: JSON ────────────────────────────────────────────
+                val jsonBytes = recvPacket(inStream)
+                val json         = JSONObject(String(jsonBytes, Charsets.UTF_8))
                 val heard        = json.optString("heard", "")
                 val reply        = json.optString("reply_urdu", "")
                 val needsConfirm = json.optBoolean("needs_confirmation", false)
@@ -356,12 +352,73 @@ class MainActivity : AppCompatActivity() {
                         setStatus("● CONNECTED  —  HOLD TO TALK", "#00FF88")
                     }
                 }
+
+                // ── Packet 2: WAV audio ───────────────────────────────────────
+                val wavBytes = recvPacket(inStream)
+                playWav(wavBytes)
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     setStatus("● ERROR: ${e.message}", "#FF4444")
                     disconnect()
                 }
             }
+        }
+    }
+
+    // ── Network helpers ───────────────────────────────────────────────────────
+
+    private fun recvPacket(stream: java.io.InputStream): ByteArray {
+        val lenBuf = ByteArray(4)
+        var read = 0
+        while (read < 4) read += stream.read(lenBuf, read, 4 - read)
+        val len = ByteBuffer.wrap(lenBuf).order(ByteOrder.BIG_ENDIAN).int
+        val buf = ByteArray(len)
+        var total = 0
+        while (total < len) total += stream.read(buf, total, len - total)
+        return buf
+    }
+
+    // ── Audio playback ────────────────────────────────────────────────────────
+
+    private fun playWav(wavBytes: ByteArray) {
+        if (wavBytes.size < 44) return  // too short to be a valid WAV
+        // Read sample rate and channel count from the WAV header
+        val sampleRate = ByteBuffer.wrap(wavBytes, 24, 4).order(ByteOrder.LITTLE_ENDIAN).int
+        val channels   = ByteBuffer.wrap(wavBytes, 22, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt()
+        val channelMask = if (channels == 1) AudioFormat.CHANNEL_OUT_MONO
+                          else AudioFormat.CHANNEL_OUT_STEREO
+        val pcm = wavBytes.copyOfRange(44, wavBytes.size)
+
+        val bufferSize = AudioTrack.getMinBufferSize(
+            sampleRate, channelMask, AudioFormat.ENCODING_PCM_16BIT
+        ).coerceAtLeast(pcm.size)
+
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(sampleRate)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(channelMask)
+                    .build()
+            )
+            .setBufferSizeInBytes(bufferSize)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+
+        track.write(pcm, 0, pcm.size)
+        track.play()
+        // Release after playback finishes (estimated by duration)
+        val durationMs = (pcm.size.toLong() * 1000L) / (sampleRate * channels * 2)
+        scope.launch(Dispatchers.IO) {
+            Thread.sleep(durationMs + 200)
+            track.stop()
+            track.release()
         }
     }
 
