@@ -39,10 +39,9 @@ DEFAULT_CWD = str(Path.home())
 # Only these directories (and their subfolders) may be touched by file actions.
 # Edit this list to match where you actually want Arif operating.
 ALLOWED_ROOTS = [
-    str(Path.home() / "Desktop"),
-    str(Path.home() / "Downloads"),
-    str(Path.home() / "Documents"),
-    "D:/JARVIS-ARIF-Workspace",  # dedicated sandbox folder, create it if you want one
+    str(Path.home()),              # C:\Users\gamer and everything under it
+    "C:/",                         # full C drive access
+    "D:/",                         # full D drive access
 ]
 
 # Actions that must be voice-confirmed before executing.

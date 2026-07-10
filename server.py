@@ -23,10 +23,20 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 from datetime import datetime
+<<<<<<< Updated upstream
 from config import TEMP_AUDIO_DIR, CONVERSATION_LOG_FILE
 from stt import transcribe_and_translate
 from intent import parse_intent
 from executor import execute
+=======
+from config    import TEMP_AUDIO_DIR, CONVERSATION_LOG_FILE
+from stt       import transcribe_and_translate
+from intent    import parse_intent
+from executor  import execute
+from tts       import synthesize_to_bytes
+import navigator
+from navigator import path_to_urdu
+>>>>>>> Stashed changes
 
 HOST = "0.0.0.0"
 PORT = 5050
@@ -82,7 +92,7 @@ def _handle_client(conn: socket.socket, addr):
                                   "result": "", "heard": "", "needs_confirmation": False})
                 continue
 
-            action = parse_intent(english_text)
+            action = parse_intent(english_text, navigator.get_current_dir())
             print(f"[action] {action}")
 
             # ── Step 2: confirmation gate ─────────────────────────────────────
@@ -109,7 +119,7 @@ def _handle_client(conn: socket.socket, addr):
             print(f"[result] {result}")
 
             if action.get("action") == "where_am_i":
-                reply_urdu = f"میں اس وقت اس مقام پر ہوں: {result}"
+                reply_urdu = path_to_urdu(result)
             else:
                 reply_urdu = action.get("reply_urdu", "ہو گیا۔")
 

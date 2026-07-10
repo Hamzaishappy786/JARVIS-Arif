@@ -51,6 +51,19 @@ def path_to_urdu(raw_path: str) -> str:
     return f"میں {drive} ڈرائیو کے {urdu_name} {postfix} ہوں"
 
 
+def find_candidates(name: str, search_dir: str) -> list[str]:
+    """Return paths of folders in search_dir whose names fuzzy-match name."""
+    import difflib
+    try:
+        entries = [e for e in os.scandir(search_dir) if e.is_dir()]
+        folder_names = [e.name for e in entries]
+        path_map = {e.name: e.path for e in entries}
+        matches = difflib.get_close_matches(name, folder_names, n=5, cutoff=0.4)
+        return [path_map[m] for m in matches]
+    except Exception:
+        return []
+
+
 def get_current_dir() -> str:
     return _current_dir
 
