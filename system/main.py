@@ -1,10 +1,16 @@
-"""Arif's main loop — push-to-talk or always-on mic, with full JSON + txt history."""
+"""
+System (PC-only) Arif entry point.
+Push-to-talk with F9 or always-on VAD mic.
+Confirmations: [1] Yes  [2] No  [3] Voice F9
+"""
 import sys
 import json
 import os
 from pathlib import Path
 
-# ── Must happen before ANY other import ───────────────────────────────────────
+# Allow imports from project root
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from startup import suppress_warnings, show_banner, show_ready, Spinner, choose_mode
 suppress_warnings()
 show_banner()
@@ -22,36 +28,30 @@ from datetime import datetime
 from recorder     import record_on_hotkey
 from vad_recorder import record_on_vad
 from stt          import transcribe_and_translate
-from intent       import parse_intent
+from intent       import parse_intent, is_goodbye
 from executor     import execute
 from tts          import speak
 from config       import CONVERSATION_LOG_FILE, HISTORY_FILE
 import navigator
-from navigator    import path_to_urdu
+from navigator    import path_to_urdu, find_candidates
 
 _spinner.stop()
 show_ready()
 
-# ─────────────────────────────────────────────────────────────────────────────
-
 YES_WORDS = ["yes", "haan", "han", "ji haan", "ji", "sure", "ok", "okay",
              "bilkul", "yup", "yep"]
 
-# Colour shortcuts (ANSI)
-_C  = "\033[38;5;51m"    # cyan
-_O  = "\033[38;5;214m"   # orange
-_G  = "\033[38;5;82m"    # green
-_R  = "\033[38;5;196m"   # red
-_GR = "\033[38;5;242m"   # grey
+_C  = "\033[38;5;51m"
+_O  = "\033[38;5;214m"
+_G  = "\033[38;5;82m"
+_R  = "\033[38;5;196m"
+_GR = "\033[38;5;242m"
 _W  = "\033[97m"
 _B  = "\033[1m"
 _RS = "\033[0m"
 
 
-# ── History ───────────────────────────────────────────────────────────────────
-
 def _append_history(entry: dict):
-    """Append one turn to history.json (creates the file if missing)."""
     history = []
     if HISTORY_FILE.exists():
         try:
@@ -65,20 +65,15 @@ def _append_history(entry: dict):
 
 
 def log_turn(speaker: str, text: str, **extra):
-    """Write to both conversation.txt and history.json."""
     if not text:
         return
     ts = datetime.now().isoformat(timespec="seconds")
-    # .txt
     with open(CONVERSATION_LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {speaker}: {text}\n")
-    # .json
     entry = {"timestamp": ts, "speaker": speaker, "text": text}
     entry.update(extra)
     _append_history(entry)
 
-
-# ── Speech helpers ────────────────────────────────────────────────────────────
 
 def say(text: str, action: str = "", result: str = ""):
     log_turn("Arif", text, action=action, result=result)
@@ -93,8 +88,6 @@ def listen(mode: str) -> str:
     log_turn("You", text, mode=mode)
     return text
 
-
-# ── Confirmation gate ─────────────────────────────────────────────────────────
 
 def confirm(prompt_urdu: str, mode: str) -> bool:
     say(prompt_urdu)
@@ -121,38 +114,85 @@ def confirm(prompt_urdu: str, mode: str) -> bool:
             print(f"  Enter {_O}1{_RS}, {_O}2{_RS}, or {_O}3{_RS}: ", end="", flush=True)
 
 
-# ── Main loop ─────────────────────────────────────────────────────────────────
-
 def main():
-    mode = choose_mode()          # "ptt" or "vad"
+    mode = choose_mode()
     say("میں تیار ہوں۔")
-
-    mode_label = f"{_O}[F9]{_RS}" if mode == "ptt" else f"{_C}[mic on]{_RS}"
 
     while True:
         try:
             if mode == "ptt":
                 print(f"\n  Hold {_O}{_B}[F9]{_RS} to talk to Arif…")
-            # vad_recorder prints its own prompt
 
             english_text = listen(mode)
             if not english_text.strip():
                 continue
             print(f"  {_C}[heard]{_RS}   {english_text}")
 
+            if is_goodbye(english_text):
+                print(f"\n  {_O}{_B}اللہ حافظ — Shutting down Arif.{_RS}\n")
+                say("اللہ حافظ۔")
+                sys.exit(0)
+
             action = parse_intent(english_text, navigator.get_current_dir())
             print(f"  {_GR}[action]{_RS}  {action}")
 
+            act_name = action.get("action", "")
+
+            # Folder-picker gate for open_folder
+            if act_name == "open_folder":
+                target_path = action.get("args", {}).get("path", "")
+                target_name = Path(target_path).name
+
+                if Path(target_path).exists():
+                    # Exact path found — just confirm it
+                    if not confirm(f"کیا یہ فولڈر کھولوں: {target_name}؟", mode):
+                        say("ٹھیک ہے، منسوخ کر دیا۔", action="cancelled")
+                        continue
+                else:
+                    # Search current dir + LLM-suggested parent for close matches
+                    search_dirs = list(dict.fromkeys([
+                        navigator.get_current_dir(),
+                        str(Path(target_path).parent),
+                    ]))
+                    candidates = []
+                    for d in search_dirs:
+                        for c in find_candidates(target_name, d):
+                            if c not in candidates:
+                                candidates.append(c)
+
+                    if not candidates:
+                        say(f"کوئی فولڈر نہیں ملا جس کا نام '{target_name}' سے ملتا ہو۔")
+                        continue
+
+                    if len(candidates) == 1:
+                        fname = Path(candidates[0]).name
+                        if not confirm(f"کیا یہ فولڈر کھولوں: {fname}؟", mode):
+                            say("ٹھیک ہے، منسوخ کر دیا۔", action="cancelled")
+                            continue
+                        action["args"]["path"] = candidates[0]
+                    else:
+                        print(f"\n  {_O}[ملتے جلتے فولڈر]{_RS}")
+                        say("کئی ملتے جلتے فولڈر ملے، کونسا کھولوں؟")
+                        for i, c in enumerate(candidates, 1):
+                            print(f"  {_O}[{i}]{_RS}  {_W}{Path(c).name}{_RS}")
+                        print(f"  {_O}>{_RS} ", end="", flush=True)
+                        while True:
+                            choice = input().strip()
+                            if choice.isdigit() and 1 <= int(choice) <= len(candidates):
+                                action["args"]["path"] = candidates[int(choice) - 1]
+                                break
+                            print(f"  نمبر درج کریں (1-{len(candidates)}): ", end="", flush=True)
+
+                action["needs_confirmation"] = False   # already handled above
+
             # Name-verification gate for folder/file actions
-            act_name_early = action.get("action", "")
-            if act_name_early in ("create_folder", "create_file", "delete"):
+            if act_name in ("create_folder", "create_file", "delete"):
                 item_path = action.get("args", {}).get("path", "")
                 item_name = Path(item_path).name if item_path else "?"
-                kind = "فائل" if act_name_early == "create_file" else "فولڈر"
-                verb = "مٹانا" if act_name_early == "delete" else "بنانا"
+                kind = "فائل" if act_name == "create_file" else "فولڈر"
+                verb = "مٹانا" if act_name == "delete" else "بنانا"
                 print(f"\n  {_O}[{kind} ka naam]{_RS}  {_W}{_B}{item_name}{_RS}")
-                prompt_name = f"{verb} ہے: {item_name} — کیا یہی نام ہے {kind} کا؟"
-                if not confirm(prompt_name, mode):
+                if not confirm(f"{verb} ہے: {item_name} — کیا یہی نام ہے {kind} کا؟", mode):
                     say("ٹھیک ہے، منسوخ کر دیا۔", action="cancelled")
                     continue
 
@@ -165,7 +205,6 @@ def main():
             result = execute(action)
             print(f"  {_G}[result]{_RS}  {result}")
 
-            act_name = action.get("action", "")
             if act_name == "where_am_i":
                 reply = path_to_urdu(result)
             else:
