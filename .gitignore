@@ -20,6 +20,9 @@ logs/*.json
 models/*.onnx
 models/*.onnx.json
 
+# Project notes (local only)
+What have we done till now.txt
+
 # Android build artifacts
 android-app/.gradle/
 android-app/build/
