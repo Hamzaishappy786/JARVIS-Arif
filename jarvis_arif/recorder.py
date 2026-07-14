@@ -9,7 +9,7 @@ import keyboard
 from .config import TEMP_AUDIO_DIR, RECORD_HOTKEY, SAMPLE_RATE, CHANNELS
 from .startup import TermWave
 
-_wave = TermWave(color="white")
+_wave = TermWave(color="orange")
 
 
 def record_on_hotkey() -> str | None:
@@ -25,9 +25,11 @@ def record_on_hotkey() -> str | None:
     stream = sd.InputStream(
         samplerate=SAMPLE_RATE, channels=CHANNELS, dtype="int16", callback=callback
     )
+    _wave.start()
     with stream:
         while keyboard.is_pressed(RECORD_HOTKEY):
             time.sleep(0.02)
+    _wave.stop()
 
     if not frames:
         return None

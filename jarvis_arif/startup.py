@@ -127,10 +127,10 @@ class TermWave:
     def __init__(self, color: str = "white"):
         if color == "orange":
             self._bar_color = ORANGE
-            self._icon      = "🔊"
+            self._icon      = "🎙"   # human mic — orange
         else:
             self._bar_color = WHITE
-            self._icon      = "🎙"
+            self._icon      = "🔊"   # Arif speaker — white
         self._stop   = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -140,7 +140,7 @@ class TermWave:
         while not self._stop.is_set():
             segment = seq[offset: offset + 28]
             sys.stdout.write(
-                f"  {self._bar_color}{self._icon}{RESET}  {CYAN}{segment}{RESET}   \r"
+                f"  {self._bar_color}{self._icon}{RESET}  {self._bar_color}{segment}{RESET}   \r"
             )
             sys.stdout.flush()
             offset = (offset + 1) % len(_WAVE_CHARS)

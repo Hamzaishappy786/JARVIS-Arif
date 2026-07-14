@@ -22,7 +22,7 @@ from datetime import datetime
 from .recorder     import record_on_hotkey
 from .vad_recorder import record_on_vad
 from .stt          import transcribe_and_translate
-from .intent       import parse_intent, is_goodbye
+from .intent       import parse_intent, is_goodbye, is_wake_phrase
 from .executor     import execute
 from .tts          import speak
 from .config       import CONVERSATION_LOG_FILE, HISTORY_FILE
@@ -85,13 +85,13 @@ def say(text: str, action: str = "", result: str = ""):
     speak(text)
 
 
-def listen(mode: str) -> str:
+def listen(mode: str) -> tuple[str, str]:
     path = record_on_hotkey() if mode == "ptt" else record_on_vad()
     if not path:
-        return ""
+        return "", ""
     text = transcribe_and_translate(path)
     log_turn("You", text, mode=mode)
-    return text
+    return text, path
 
 
 # ── Confirmation gate ─────────────────────────────────────────────────────────
@@ -114,7 +114,8 @@ def confirm(prompt_urdu: str, mode: str) -> bool:
             return False
         elif choice in ("3", "v", "voice", "f9"):
             print(f"  {_GR}[Hold F9 and speak…]{_RS}")
-            text = listen("ptt").lower()
+            text, _ = listen("ptt")
+            text = text.lower()
             print(f"  {_GR}[voice heard]{_RS} {text}")
             return any(w in text for w in YES_WORDS)
         else:
@@ -128,6 +129,7 @@ def main():
     say("میں تیار ہوں۔")
 
     mode_label = f"{_O}[F9]{_RS}" if mode == "ptt" else f"{_C}[mic on]{_RS}"
+    session_history: list[dict] = []
 
     while True:
         try:
@@ -135,12 +137,16 @@ def main():
                 print(f"\n  Hold {_O}{_B}[F9]{_RS} to talk to Arif…")
             # vad_recorder prints its own prompt
 
-            english_text = listen(mode)
+            english_text, audio_path = listen(mode)
             if not english_text.strip():
                 continue
             print(f"  {_C}[heard]{_RS}   {english_text}")
 
-            action = parse_intent(english_text, navigator.get_current_dir())
+            if is_wake_phrase(english_text):
+                say("جی سر، کیا بات ہے؟")
+                continue
+
+            action = parse_intent(english_text, navigator.get_current_dir(), history=session_history[-8:])
             print(f"  {_GR}[action]{_RS}  {action}")
 
             # Name-verification gate for folder/file actions
@@ -156,6 +162,9 @@ def main():
                     say("ٹھیک ہے، منسوخ کر دیا۔", action="cancelled")
                     continue
 
+            if act_name_early == "dictate":
+                action.setdefault("args", {})["audio_path"] = audio_path
+
             if action.get("needs_confirmation"):
                 prompt = f"کیا آپ واقعی چاہتے ہیں کہ میں یہ کروں: {action.get('reply_urdu', '')}؟"
                 if not confirm(prompt, mode):
@@ -168,10 +177,15 @@ def main():
             act_name = action.get("action", "")
             if act_name == "where_am_i":
                 reply = path_to_urdu(result)
+            elif act_name == "get_weather":
+                reply = result if result.startswith("ERROR") else f"🌤 {result}"
             else:
                 reply = action.get("reply_urdu", "ہو گیا۔")
 
             say(reply, action=act_name, result=result)
+
+            session_history.append({"role": "user", "content": english_text})
+            session_history.append({"role": "assistant", "content": f"Did: {act_name} {action.get('args', {})}"})
 
         except KeyboardInterrupt:
             print(f"\n\n  {_O}{_B}خدا حافظ — Shutting down Arif.{_RS}\n")
