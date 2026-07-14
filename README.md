@@ -1,8 +1,10 @@
-# Arif — Urdu Voice Assistant (JARVIS-style)
+# Arif: Urdu Voice Assistant (JARVIS-style)
 
 > **Current focus:** This repo has ONE goal — build "Arif", a voice assistant that
 > takes spoken Urdu commands and performs actions on the user's Windows PC (file/folder
 > operations, closing apps, etc.), then replies with Urdu voice. Only work on Arif.
+
+[![PyPI](https://img.shields.io/pypi/v/jarvis-arif)](https://pypi.org/project/jarvis-arif/)
 
 ## About the user / interaction style
 - The user speaks **Urdu** (romanized meaning like "falani folder mein chale jao",
