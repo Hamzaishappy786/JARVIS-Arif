@@ -11,6 +11,8 @@ VALID_ACTIONS = {
     "create_folder", "create_file", "delete", "move", "copy",
     "open_app", "close_app", "close_all", "minimize_app", "minimize_all",
     "list", "open_folder", "where_am_i", "set_brightness", "goodbye", "none",
+    "set_volume", "open_website", "get_weather", "set_reminder",
+    "take_screenshot", "dictate",
 }
 
 # Farewell phrases — detected locally before hitting the LLM
@@ -24,6 +26,21 @@ GOODBYE_PHRASES = [
 def is_goodbye(text: str) -> bool:
     t = text.lower().strip()
     return any(phrase in t for phrase in GOODBYE_PHRASES)
+
+
+# Wake-phrase greeting ("Yaar Arif") — detected locally before hitting the LLM.
+# Whisper translates Urdu speech to English, so "یار عارف" may come through as
+# any of several renderings; this list is a first draft, extend after testing
+# against real recordings.
+WAKE_PHRASES = [
+    "hey arif", "hey aarif", "yaar arif", "friend arif", "dear arif",
+    "hi arif", "hello arif", "buddy arif", "yo arif", "arif yaar",
+]
+
+
+def is_wake_phrase(text: str) -> bool:
+    t = text.lower().strip()
+    return any(phrase in t for phrase in WAKE_PHRASES)
 
 _SYSTEM_PROMPT_BASE = f"""You are the intent-parsing brain for "Arif", a Windows voice assistant.
 You receive an English translation of a spoken Urdu command and must output ONLY a JSON object
@@ -53,8 +70,9 @@ Rules:
   clearly one of these, still fill your best-guess absolute path under the most relevant root.
 - Set "needs_confirmation": true for any of: {sorted(CONFIRM_REQUIRED_ACTIONS)}, or when the
   command affects 2+ files/folders, or the request is ambiguous.
-- Brightness commands ("roshni kam karo", "light teez karo", "brightness badha do", "screen dark
-  karo", "poori roshni karo", "roshni 50 karo", etc.) map to "action": "set_brightness".
+- Brightness commands -- about SCREEN LIGHT ("roshni kam karo", "light teez karo", "brightness
+  badha do", "screen dark karo", "poori roshni karo", "roshni 50 karo", or the English words
+  "brightness"/"screen light"/"display") -- map to "action": "set_brightness".
   Use "args": {{"level": <0-100>}} for an absolute value, OR "args": {{"delta": <-100 to 100>}} for
   a relative change (e.g. "kam karo" → delta: -30, "zyada karo" → delta: +30, "bilkul band" →
   level: 0, "poori/max" → level: 100, "thodi kam" → delta: -15, "thodi zyada" → delta: +15).
@@ -64,27 +82,61 @@ Rules:
   for reply_urdu here -- the real path is filled in after execution, not by you.
 - For "list" / "show contents" / "kya hai andar": use "action": "list" with empty args -- the
   executor will list the current working directory automatically.
+- Volume commands -- about SOUND/SPEAKER LEVEL ("awaaz kam karo", "zyada karo", "mute karo",
+  "un-mute karo", "awaaz 50 karo", "chup karo", or the English words "volume"/"sound"/"voice"/
+  "speaker") -- map to "action": "set_volume". Use "args": {{"level": <0-100>}} for an absolute
+  value, OR "args": {{"delta": <-100 to 100>}} for a relative change, OR "args": {{"mute": true}}
+  / "args": {{"mute": false}}. Never combine multiple keys -- pick exactly one based on the phrase.
+- IMPORTANT: set_brightness (screen light) and set_volume (sound level) are DIFFERENT actions --
+  never conflate them. If the command mentions "awaaz"/"volume"/"sound"/"voice"/"speaker", it is
+  ALWAYS set_volume, never set_brightness, even if the phrasing otherwise resembles a brightness
+  example above. If it mentions "roshni"/"brightness"/"light"/"screen", it is ALWAYS
+  set_brightness, never set_volume.
+- Opening a website/page ("YouTube kholo", "Google kholo", "whatsapp web kholo") maps to
+  "action": "open_website" with "args": {{"name": "<site name or plain text exactly as said>"}}.
+  Do not build a URL yourself -- pass the raw spoken name through unchanged.
+- Weather questions ("aaj ka mausam kya hai", "kal ka mausam", "garmi hai kya", "baarish hogi kya")
+  map to "action": "get_weather" with "args": {{}} (defaults to the configured city), or
+  "args": {{"city": "<name>"}} if the user explicitly names a different city. Note: only current
+  conditions are available right now, so treat "kal" (tomorrow) phrasing the same as "aaj" (today).
+- Reminder/alarm requests ("5 minute baad yaad dilana", "10 minute mein alarm laga do") map to
+  "action": "set_reminder". Convert the spoken duration to seconds in
+  "args": {{"seconds": <int>, "message": "<what to remind about>"}}. If no explicit message content
+  is given, default the message to a generic Urdu reminder phrase.
+- Screenshot requests ("screenshot lo", "tasveer le lo screen ki") map to "action": "take_screenshot"
+  with "args": {{}}.
+- Dictation/typing requests ("yeh likhna hai...", "notepad mein likh do", "type kar do yeh") map to
+  "action": "dictate" with "args": {{}} -- the actual text to type is NOT extracted here; it comes
+  from a separate native-Urdu re-transcription of the same audio, handled after execution. Just
+  detect the trigger phrase and set reply_urdu to something like "ٹھیک ہے، لکھ رہا ہوں۔".
 - If you cannot map the command to a real action, use "action": "none" and explain in reply_urdu.
 - reply_urdu must always be filled, in Urdu script, short and natural (not a translation dump).
+  CRITICAL: use proper Urdu Unicode — ک (U+06A9) not ك, ی (U+06CC) not ي, ہ (U+06C1) not ه.
+  Never use Arabic lookalike codepoints; the Urdu TTS engine will mispronounce them.
+- Prior turns may be included below as conversation history -- use them to resolve pronouns/context
+  in the CURRENT command (e.g. "usko wahi wapas le jao" referring to something mentioned earlier),
+  but always output a fresh JSON action for the current command only.
 - Output raw JSON only, nothing else.
 """
 
 
-def parse_intent(english_text: str, current_dir: str = "") -> dict:
+def parse_intent(english_text: str, current_dir: str = "", history: list[dict] | None = None) -> dict:
     cwd_line = (
         f"\n\nCURRENT WORKING DIRECTORY (use this as base for any relative path): {current_dir}"
         if current_dir else ""
     )
     system_prompt = _SYSTEM_PROMPT_BASE + cwd_line
 
+    messages = [{"role": "system", "content": system_prompt}]
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": english_text})
+
     resp = _client.chat.completions.create(
         model=GROQ_LLM_MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": english_text},
-        ],
+        messages=messages,
         response_format={"type": "json_object"},
-        temperature=0.2,
+        temperature=0,
     )
     data = json.loads(resp.choices[0].message.content)
 

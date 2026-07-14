@@ -7,8 +7,9 @@ Protocol  PC → Phone:
   {"type": "response", "text": "<urdu reply>", "action": "...", "result": "..."}  +  WAV (reply audio)
 
 Protocol  Phone → PC:
-  WAV audio (user speech)
-  {"answer": "yes"} or {"answer": "no"}  (only during a confirm exchange)
+  WAV audio (user speech) -- also used to answer a confirm/pick question by voice
+  {"answer": "yes"} or {"answer": "no"}  (button-style UI answering a confirm)
+  {"pick": index}  (button-style UI answering a pick)
 """
 import sys
 import os
@@ -17,6 +18,8 @@ import socket
 import struct
 import time
 import threading
+import re
+import difflib
 from pathlib import Path
 
 os.environ.setdefault("USE_TF", "0")
@@ -35,7 +38,7 @@ _spinner = Spinner("Loading Arif (Android mode)").start()
 from datetime import datetime
 from .config    import TEMP_AUDIO_DIR, CONVERSATION_LOG_FILE, HISTORY_FILE
 from .stt       import transcribe_and_translate
-from .intent    import parse_intent, is_goodbye
+from .intent    import parse_intent, is_goodbye, is_wake_phrase
 from .executor  import execute
 from .tts       import synthesize_to_bytes
 from . import navigator
@@ -46,6 +49,22 @@ show_ready()
 
 HOST = "0.0.0.0"
 PORT = 5050
+
+# How long to wait for a confirm/pick answer before treating silence as cancel
+# (matches the app's "HOLD TO CONFIRM / RELEASE = CANCEL" UX -- releasing
+# without holding again sends nothing at all).
+_ANSWER_TIMEOUT = 15.0
+
+_YES_WORDS = ["yes", "haan", "han", "ji haan", "ji", "sure", "ok", "okay",
+              "bilkul", "yup", "yep"]
+
+_NUMBER_WORDS = {
+    "one": 0, "first": 0, "pehla": 0, "pehli": 0,
+    "two": 1, "second": 1, "doosra": 1, "doosri": 1,
+    "three": 2, "third": 2, "teesra": 2, "teesri": 2,
+    "four": 3, "fourth": 3, "chautha": 3,
+    "five": 4, "fifth": 4, "paanchwa": 4,
+}
 
 # ── Terminal waveform animation ───────────────────────────────────────────────
 
@@ -138,42 +157,86 @@ def _log(speaker: str, text: str, **extra):
 
 def _ask_pick(sock: socket.socket, message: str, options: list[str]) -> int:
     """
-    Send a pick-list to the phone, wait for {"pick": index}.
-    Returns the chosen index, or -1 if cancelled.
+    Send a pick-list to the phone, wait for either {"pick": index} (button-style
+    UI) or a spoken answer (hold-to-talk, matching a number word or a folder name).
+    Returns the chosen index, or -1 if cancelled/timed out/unrecognized.
     """
     _send_json(sock, {"type": "pick", "message": message, "options": options})
     _send_audio(sock, message)
 
-    reply_bytes = _recv_packet(sock)
+    sock.settimeout(_ANSWER_TIMEOUT)
     try:
-        reply = json.loads(reply_bytes.decode("utf-8"))
-        return int(reply.get("pick", -1))
-    except Exception:
+        raw = _recv_packet(sock)
+    except (socket.timeout, ConnectionError):
         return -1
+    finally:
+        sock.settimeout(None)
+
+    try:
+        reply = json.loads(raw.decode("utf-8"))
+        return int(reply.get("pick", -1))
+    except (UnicodeDecodeError, ValueError, TypeError):
+        pass   # not JSON -> it's a spoken WAV answer
+
+    tmp_path = TEMP_AUDIO_DIR / f"mobile_pick_{int(time.time())}.wav"
+    tmp_path.write_bytes(raw)
+    spoken = transcribe_and_translate(str(tmp_path)).lower().strip()
+
+    for word, idx in _NUMBER_WORDS.items():
+        if word in spoken and idx < len(options):
+            return idx
+
+    digits = re.search(r"\d+", spoken)
+    if digits:
+        idx = int(digits.group()) - 1
+        if 0 <= idx < len(options):
+            return idx
+
+    lowered_options = [o.lower() for o in options]
+    matches = difflib.get_close_matches(spoken, lowered_options, n=1, cutoff=0.4)
+    if matches:
+        return lowered_options.index(matches[0])
+
+    return -1
 
 
 # ── Confirm via phone buttons ─────────────────────────────────────────────────
 
 def _ask_confirm(sock: socket.socket, message: str, item: str = "") -> bool:
     """
-    Send confirm question to phone (JSON + audio), wait for {"answer":"yes/no"}.
-    Returns True if user tapped Yes.
+    Send confirm question to phone (JSON + audio), wait for either {"answer":"yes/no"}
+    (button-style UI) or a spoken answer (hold-to-talk, matching against yes-words).
+    Times out to False (cancelled) if the phone sends nothing within _ANSWER_TIMEOUT,
+    matching the app's "HOLD TO CONFIRM / RELEASE = CANCEL" UX.
     """
     _send_json(sock, {"type": "confirm", "message": message, "item": item})
     _send_audio(sock, message)
 
-    reply_bytes = _recv_packet(sock)
+    sock.settimeout(_ANSWER_TIMEOUT)
     try:
-        reply = json.loads(reply_bytes.decode("utf-8"))
-        return reply.get("answer", "no").lower() in ("yes", "haan", "ji", "1")
-    except Exception:
+        raw = _recv_packet(sock)
+    except (socket.timeout, ConnectionError):
         return False
+    finally:
+        sock.settimeout(None)
+
+    try:
+        reply = json.loads(raw.decode("utf-8"))
+        return reply.get("answer", "no").lower() in ("yes", "haan", "ji", "1")
+    except (UnicodeDecodeError, ValueError, TypeError):
+        pass   # not JSON -> it's a spoken WAV answer
+
+    tmp_path = TEMP_AUDIO_DIR / f"mobile_confirm_{int(time.time())}.wav"
+    tmp_path.write_bytes(raw)
+    spoken = transcribe_and_translate(str(tmp_path)).lower()
+    return any(w in spoken for w in _YES_WORDS)
 
 
 # ── Client handler ────────────────────────────────────────────────────────────
 
 def _handle_client(conn: socket.socket, addr):
     print(f"  \033[38;5;82m[connected]\033[0m  {addr}")
+    session_history: list[dict] = []
     try:
         while True:
             # Step 1: receive packet — may be a control signal or audio
@@ -198,6 +261,13 @@ def _handle_client(conn: socket.socket, addr):
             print(f"  \033[38;5;51m[heard]\033[0m   {english_text}")
             _log("You", english_text)
 
+            if is_wake_phrase(english_text):
+                reply = "جی سر، کیا بات ہے؟"
+                _send_json(conn, {"type": "response", "text": reply, "action": "wake", "result": ""})
+                _send_audio(conn, reply)
+                _log("Arif", reply, action="wake")
+                continue
+
             if is_goodbye(english_text):
                 farewell = "اللہ حافظ۔"
                 _send_json(conn, {"type": "response", "text": farewell, "action": "goodbye", "result": ""})
@@ -213,9 +283,12 @@ def _handle_client(conn: socket.socket, addr):
                 _send_audio(conn, reply)
                 continue
 
-            action   = parse_intent(english_text, navigator.get_current_dir())
+            action   = parse_intent(english_text, navigator.get_current_dir(), history=session_history[-8:])
             act_name = action.get("action", "")
             print(f"  \033[38;5;242m[action]\033[0m  {action}")
+
+            if act_name == "dictate":
+                action.setdefault("args", {})["audio_path"] = str(tmp_path)
 
             # Step 2: folder-picker gate for open_folder
             if act_name == "open_folder":
@@ -291,12 +364,17 @@ def _handle_client(conn: socket.socket, addr):
 
             if act_name == "where_am_i":
                 reply = path_to_urdu(result)
+            elif act_name == "get_weather":
+                reply = result if result.startswith("ERROR") else f"🌤 {result}"
             else:
                 reply = action.get("reply_urdu", "ہو گیا۔")
 
             _log("Arif", reply, action=act_name, result=result)
             _send_json(conn, {"type": "response", "text": reply, "action": act_name, "result": result})
             _send_audio(conn, reply)
+
+            session_history.append({"role": "user", "content": english_text})
+            session_history.append({"role": "assistant", "content": f"Did: {act_name} {action.get('args', {})}"})
 
     except ConnectionError as e:
         print(f"  \033[38;5;196m[disconnected]\033[0m  {addr}: {e}")

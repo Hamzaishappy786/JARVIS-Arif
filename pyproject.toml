@@ -31,6 +31,10 @@ dependencies = [
     "pywin32>=308",
     "keyboard>=0.13.5",
     "screen-brightness-control>=0.23.0",
+    "pycaw>=20240210",
+    "requests>=2.32.3",
+    "pillow>=10.2",
+    "pyautogui>=0.9.54",
 ]
 
 [project.scripts]

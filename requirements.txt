@@ -9,6 +9,10 @@ pygetwindow==0.0.9
 pywin32==308
 keyboard==0.13.5
 screen-brightness-control==0.23.0
+pycaw==20251023
+requests==2.32.3
+Pillow==10.2.0
+PyAutoGUI==0.9.54
 # torch is NOT installed here on purpose -- this venv was created with --system-site-packages
 # so it reuses the already-installed global torch==1.12.1+cu113 (proven working with this
 # machine's GPU/CUDA setup) instead of pulling a second multi-GB copy.
