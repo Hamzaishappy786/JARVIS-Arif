@@ -4,7 +4,11 @@
 > takes spoken Urdu commands and performs actions on the user's Windows PC (file/folder
 > operations, closing apps, etc.), then replies with Urdu voice. Only work on Arif.
 
-[![PyPI](https://img.shields.io/pypi/v/jarvis-arif)](https://pypi.org/project/jarvis-arif/)
+<p align="center">⬇️ ⬇️ ⬇️ CLICK ME ⬇️ ⬇️ ⬇️</p>
+
+<p align="center">➡️ ➡️ ➡️ &nbsp;&nbsp;&nbsp;&nbsp; <a href="https://pypi.org/project/jarvis-arif/"><img src="https://img.shields.io/pypi/v/jarvis-arif?style=for-the-badge&logo=pypi&label=pip+install+jarvis-arif"/></a> &nbsp;&nbsp;&nbsp;&nbsp; ⬅️ ⬅️ ⬅️</p>
+
+<p align="center">⬆️ ⬆️ ⬆️ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ⬆️ ⬆️ ⬆️</p>
 
 ## About the user / interaction style
 - The user speaks **Urdu** (romanized meaning like "falani folder mein chale jao",

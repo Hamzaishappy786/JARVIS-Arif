@@ -8,6 +8,9 @@ __pycache__/
 .venv/
 venv/
 
+# AI / IDE tools
+.claude/
+
 # Temp audio
 temp_audio/*.wav
 
@@ -30,3 +33,7 @@ android-app/app/build/
 android-app/local.properties
 android-app/.idea/
 android-app/**/*.iml
+
+
+dist/
+*.egg-info/
