@@ -23,12 +23,13 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 from datetime import datetime
-<<<<<<< Updated upstream
+functionalities
+Updated upstream
 from config import TEMP_AUDIO_DIR, CONVERSATION_LOG_FILE
 from stt import transcribe_and_translate
 from intent import parse_intent
 from executor import execute
-=======
+main
 from config    import TEMP_AUDIO_DIR, CONVERSATION_LOG_FILE
 from stt       import transcribe_and_translate
 from intent    import parse_intent
@@ -36,7 +37,9 @@ from executor  import execute
 from tts       import synthesize_to_bytes
 import navigator
 from navigator import path_to_urdu
->>>>>>> Stashed changes
+functionalities
+Stashed changes
+main
 
 HOST = "0.0.0.0"
 PORT = 5050

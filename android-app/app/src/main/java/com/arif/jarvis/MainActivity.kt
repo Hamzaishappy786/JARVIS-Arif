@@ -288,6 +288,17 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) return
 
+        // Notify PC so it shows the scrolling waveform in the terminal
+        scope.launch(Dispatchers.IO) {
+            try {
+                val signal = """{"type":"start_speaking"}""".toByteArray(Charsets.UTF_8)
+                val out = DataOutputStream(socket?.getOutputStream() ?: return@launch)
+                out.writeInt(signal.size)
+                out.write(signal)
+                out.flush()
+            } catch (_: Exception) {}
+        }
+
         val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNELS, ENCODING)
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC, SAMPLE_RATE, CHANNELS, ENCODING, minBuf * 4
