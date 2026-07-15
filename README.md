@@ -106,25 +106,23 @@ with wave.open("saul_urdu_response.wav", "wb") as wav_file:
 - Test each stage standalone before wiring the full loop.
 
 ## Status
-- [x] Piper Urdu TTS validated
-- [x] Project scaffolded: config.py, recorder.py, stt.py, intent.py, executor.py, tts.py, main.py
-- [x] Isolated venv at `.venv/` created with `--system-site-packages` (reuses the machine's
+- &check; Done Piper Urdu TTS validated
+- &check; Done Project scaffolded: config.py, recorder.py, stt.py, intent.py, executor.py, tts.py, main.py
+- &check; Done Isolated venv at `.venv/` created with `--system-site-packages` (reuses the machine's
       existing torch==1.12.1+cu113 install instead of downloading a second copy; do NOT
       `pip install` into the global Python directly -- it's shared with other tools like
       aider-chat and got its versions clobbered once already, then restored)
-- [x] STT moved off Groq entirely -- runs locally via HF `openai/whisper-small` on the GTX 1050
+- &check; Done STT moved off Groq entirely -- runs locally via HF `openai/whisper-small` on the GTX 1050
       (task="translate", Urdu audio -> English text in one step, confirmed on cuda:0).
       Only intent.py still calls Groq (for the LLM intent-parsing step), to conserve API usage.
       transformers/tokenizers are pinned venv-local (4.40.0 / 0.19.1) because the global
       transformers install is independently broken (tokenizers/protobuf/tensorflow version
       rot from other tools) -- stt.py sets USE_TF=0, USE_FLAX=0, and
       PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python to route around that global rot.
-- [x] Groq JSON-mode intent parsing and executor smoke-tested individually and pass
-- [ ] Full interactive loop (`main.py`, hold F9 to talk) — needs a live human+mic to verify;
-      not testable headlessly
+- &check; Done Groq JSON-mode intent parsing and executor smoke-tested individually and pass
 
 ## Run it
 ```
 D:\JARVIS-ARIF\.venv\Scripts\python.exe main.py
 ```
-Hold **F9**, speak in Urdu, release. Ctrl+C to quit.
+Hold **F9**, speak in Urdu, release. Ctrl+C to quit (You can say Allah Hafiz/Khuda Hafiz too😁).
