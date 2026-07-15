@@ -146,6 +146,10 @@ def main():
                 say("جی سر، کیا بات ہے؟")
                 continue
 
+            if is_goodbye(english_text):
+                say("اللہ حافظ۔")
+                sys.exit(0)
+
             action = parse_intent(english_text, navigator.get_current_dir(), history=session_history[-8:])
             print(f"  {_GR}[action]{_RS}  {action}")
 
@@ -175,7 +179,10 @@ def main():
             print(f"  {_G}[result]{_RS}  {result}")
 
             act_name = action.get("action", "")
-            if act_name == "where_am_i":
+            if act_name == "goodbye":
+                say("اللہ حافظ۔")
+                sys.exit(0)
+            elif act_name == "where_am_i":
                 reply = path_to_urdu(result)
             elif act_name == "get_weather":
                 reply = result if result.startswith("ERROR") else f"🌤 {result}"

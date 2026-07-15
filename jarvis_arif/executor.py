@@ -18,6 +18,12 @@ from . import weather
 from . import reminder
 from . import screenshot
 from . import dictation
+from . import limits as limits_mod
+from . import sleep as sleep_mod
+from . import hibernate as hibernate_mod
+from . import logoff as logoff_mod
+from . import restart as restart_mod
+from . import shutdown as shutdown_mod
 
 from .config import LOG_FILE
 from .guard import ActionError
@@ -62,6 +68,13 @@ _ROUTES = {
     "set_reminder":   reminder.set_reminder,
     "take_screenshot": screenshot.take_screenshot,
     "dictate":        dictation.dictate,
+    "show_limits":    lambda _: (limits_mod.show_limits(), "limits shown")[1],
+    "sleep_pc":       sleep_mod.sleep_pc,
+    "hibernate_pc":   hibernate_mod.hibernate_pc,
+    "logoff_pc":      logoff_mod.logoff_pc,
+    "restart_pc":     restart_mod.restart_pc,
+    "shutdown_pc":    shutdown_mod.shutdown_pc,
+    "goodbye":        lambda _: "goodbye",
     "none":           lambda _: "no-op",
 }
 

@@ -11,13 +11,11 @@ venv/
 # AI / IDE tools
 .claude/
 
-# Temp audio
-temp_audio/*.wav
-
-# Logs (keep folder, ignore contents)
-logs/*.log
-logs/*.txt
-logs/*.json
+# Runtime data (all stored inside project dir)
+temp_audio/
+screenshots/
+logs/
+usage.json
 
 # Piper model weights (large binary — download separately)
 models/*.onnx
@@ -33,7 +31,6 @@ android-app/app/build/
 android-app/local.properties
 android-app/.idea/
 android-app/**/*.iml
-
 
 dist/
 *.egg-info/

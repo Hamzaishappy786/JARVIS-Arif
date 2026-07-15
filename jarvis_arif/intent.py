@@ -4,6 +4,7 @@ import json
 from groq import Groq
 
 from .config import GROQ_API_KEY, GROQ_LLM_MODEL, ALLOWED_ROOTS, CONFIRM_REQUIRED_ACTIONS
+from .usage import record
 
 _client = Groq(api_key=GROQ_API_KEY)
 
@@ -12,7 +13,8 @@ VALID_ACTIONS = {
     "open_app", "close_app", "close_all", "minimize_app", "minimize_all",
     "list", "open_folder", "where_am_i", "set_brightness", "goodbye", "none",
     "set_volume", "open_website", "get_weather", "set_reminder",
-    "take_screenshot", "dictate",
+    "take_screenshot", "dictate", "show_limits",
+    "sleep_pc", "hibernate_pc", "logoff_pc", "restart_pc", "shutdown_pc",
 }
 
 # Farewell phrases — detected locally before hitting the LLM
@@ -42,82 +44,34 @@ def is_wake_phrase(text: str) -> bool:
     t = text.lower().strip()
     return any(phrase in t for phrase in WAKE_PHRASES)
 
-_SYSTEM_PROMPT_BASE = f"""You are the intent-parsing brain for "Arif", a Windows voice assistant.
-You receive an English translation of a spoken Urdu command and must output ONLY a JSON object
-(no prose, no markdown fences) with this exact shape:
+_SYSTEM_PROMPT_BASE = f"""Arif Windows voice assistant intent parser. Output ONLY raw JSON, no prose.
 
-{{
-  "action": one of {sorted(VALID_ACTIONS)},
-  "args": {{"path": "...", "target": "...", "name": "..."}},
-  "needs_confirmation": true or false,
-  "reply_urdu": "a short natural Urdu sentence (in Urdu script) to speak back to the user"
-}}
+{{"action":"<one of {sorted(VALID_ACTIONS)}>","args":{{...}},"needs_confirmation":true/false,"reply_urdu":"<short Urdu>"}}
 
-Rules:
-- "args" only includes the keys relevant to the action; omit keys you don't need.
-- "path" (and "target", for move/copy) must always be ONE FULL ABSOLUTE PATH, already joined
-  with any folder/file name mentioned. IMPORTANT: if no explicit location is given, build
-  the path inside the CURRENT WORKING DIRECTORY shown below. For example if the user says
-  "delete Hamza" and cwd is C:/Users/gamer/Desktop/Harris, output
-  "path": "C:/Users/gamer/Desktop/Harris/Hamza".
-  The "name" key is ONLY used for open_app/close_app (the app name, not a path component).
-- For open_app: set "name" to the plain app name the user said (e.g. "chrome", "discord",
-  "android studio"). Always set needs_confirmation: true and reply_urdu should say something
-  like "کیا میں [app name] کھولوں؟" so the user can confirm with haan/nahi.
-- For minimize_app: set "name" to the app the user wants minimized. Use minimize_all (empty args)
-  when they say "sab minimize karo" / "minimize everything" / "sab chupa do".
-- Paths must resolve within these allowed roots: {ALLOWED_ROOTS}. If the user's target isn't
-  clearly one of these, still fill your best-guess absolute path under the most relevant root.
-- Set "needs_confirmation": true for any of: {sorted(CONFIRM_REQUIRED_ACTIONS)}, or when the
-  command affects 2+ files/folders, or the request is ambiguous.
-- Brightness commands -- about SCREEN LIGHT ("roshni kam karo", "light teez karo", "brightness
-  badha do", "screen dark karo", "poori roshni karo", "roshni 50 karo", or the English words
-  "brightness"/"screen light"/"display") -- map to "action": "set_brightness".
-  Use "args": {{"level": <0-100>}} for an absolute value, OR "args": {{"delta": <-100 to 100>}} for
-  a relative change (e.g. "kam karo" → delta: -30, "zyada karo" → delta: +30, "bilkul band" →
-  level: 0, "poori/max" → level: 100, "thodi kam" → delta: -15, "thodi zyada" → delta: +15).
-  Never set both level and delta at once -- pick one based on the phrase.
-- Questions asking where Arif currently is (e.g. "tum kahan pe ho", "kahan ho", "where are you",
-  "abhi kis folder mein ho") map to "action": "where_am_i" with empty args. Do not guess a path
-  for reply_urdu here -- the real path is filled in after execution, not by you.
-- For "list" / "show contents" / "kya hai andar": use "action": "list" with empty args -- the
-  executor will list the current working directory automatically.
-- Volume commands -- about SOUND/SPEAKER LEVEL ("awaaz kam karo", "zyada karo", "mute karo",
-  "un-mute karo", "awaaz 50 karo", "chup karo", or the English words "volume"/"sound"/"voice"/
-  "speaker") -- map to "action": "set_volume". Use "args": {{"level": <0-100>}} for an absolute
-  value, OR "args": {{"delta": <-100 to 100>}} for a relative change, OR "args": {{"mute": true}}
-  / "args": {{"mute": false}}. Never combine multiple keys -- pick exactly one based on the phrase.
-- IMPORTANT: set_brightness (screen light) and set_volume (sound level) are DIFFERENT actions --
-  never conflate them. If the command mentions "awaaz"/"volume"/"sound"/"voice"/"speaker", it is
-  ALWAYS set_volume, never set_brightness, even if the phrasing otherwise resembles a brightness
-  example above. If it mentions "roshni"/"brightness"/"light"/"screen", it is ALWAYS
-  set_brightness, never set_volume.
-- Opening a website/page ("YouTube kholo", "Google kholo", "whatsapp web kholo") maps to
-  "action": "open_website" with "args": {{"name": "<site name or plain text exactly as said>"}}.
-  Do not build a URL yourself -- pass the raw spoken name through unchanged.
-- Weather questions ("aaj ka mausam kya hai", "kal ka mausam", "garmi hai kya", "baarish hogi kya")
-  map to "action": "get_weather" with "args": {{}} (defaults to the configured city), or
-  "args": {{"city": "<name>"}} if the user explicitly names a different city. Note: only current
-  conditions are available right now, so treat "kal" (tomorrow) phrasing the same as "aaj" (today).
-- Reminder/alarm requests ("5 minute baad yaad dilana", "10 minute mein alarm laga do") map to
-  "action": "set_reminder". Convert the spoken duration to seconds in
-  "args": {{"seconds": <int>, "message": "<what to remind about>"}}. If no explicit message content
-  is given, default the message to a generic Urdu reminder phrase.
-- Screenshot requests ("screenshot lo", "tasveer le lo screen ki") map to "action": "take_screenshot"
-  with "args": {{}}.
-- Dictation/typing requests ("yeh likhna hai...", "notepad mein likh do", "type kar do yeh") map to
-  "action": "dictate" with "args": {{}} -- the actual text to type is NOT extracted here; it comes
-  from a separate native-Urdu re-transcription of the same audio, handled after execution. Just
-  detect the trigger phrase and set reply_urdu to something like "ٹھیک ہے، لکھ رہا ہوں۔".
-- If you cannot map the command to a real action, use "action": "none" and explain in reply_urdu.
-- reply_urdu must always be filled, in Urdu script, short and natural (not a translation dump).
-  CRITICAL: use proper Urdu Unicode — ک (U+06A9) not ك, ی (U+06CC) not ي, ہ (U+06C1) not ه.
-  Never use Arabic lookalike codepoints; the Urdu TTS engine will mispronounce them.
-- Prior turns may be included below as conversation history -- use them to resolve pronouns/context
-  in the CURRENT command (e.g. "usko wahi wapas le jao" referring to something mentioned earlier),
-  but always output a fresh JSON action for the current command only.
-- Output raw JSON only, nothing else.
-"""
+ACTIONS & ARGS:
+create_folder/create_file/delete/move/copy → "path" (full absolute path, join with cwd if relative); move/copy also "target"
+open_app/close_app/minimize_app → "name" (plain app name); open_app always needs_confirmation=true
+minimize_all/close_all/list/where_am_i/take_screenshot/dictate/show_limits/goodbye → empty args
+set_brightness → {{"level":0-100}} OR {{"delta":-100..100}}; triggered by: roshni/brightness/screen/light/display
+set_volume      → {{"level":0-100}} OR {{"delta":-100..100}} OR {{"mute":true/false}}; triggered by: awaaz/volume/sound/voice/speaker
+NEVER mix set_brightness and set_volume — they are completely different. awaaz→volume, roshni→brightness.
+open_website → {{"name":"<spoken site name verbatim>"}} — do NOT build a URL
+get_weather  → {{}} or {{"city":"<name>"}}
+set_reminder → {{"seconds":<int>,"message":"<text>"}}
+
+Power commands (all need needs_confirmation=true):
+sleep_pc → "so jao"/"sleep karo"/suspend; empty args
+hibernate_pc → "hibernate"/"deep sleep"; empty args
+logoff_pc → "log off"/"sign out"/"session band"; empty args
+restart_pc → "restart"/"dobara chalao"; optional {{"seconds":10}}
+shutdown_pc → "shutdown"/"band karo PC"/"power off"; optional {{"seconds":10}}
+
+RULES:
+- needs_confirmation=true for: {sorted(CONFIRM_REQUIRED_ACTIONS)}, ambiguous commands, 2+ files affected
+- path always absolute; if no location given, use CWD (provided below)
+- reply_urdu: short, natural Urdu script. Use ک not ك, ی not ي, ہ not ه (Urdu not Arabic codepoints)
+- History below = prior turns for pronoun context only; always output fresh JSON for current command
+- Output raw JSON only."""
 
 
 def parse_intent(english_text: str, current_dir: str = "", history: list[dict] | None = None) -> dict:
@@ -129,14 +83,16 @@ def parse_intent(english_text: str, current_dir: str = "", history: list[dict] |
 
     messages = [{"role": "system", "content": system_prompt}]
     if history:
-        messages.extend(history)
+        messages.extend(history[-4:])   # last 2 turns (4 messages) is enough for context
     messages.append({"role": "user", "content": english_text})
 
+    record("llm")
     resp = _client.chat.completions.create(
         model=GROQ_LLM_MODEL,
         messages=messages,
         response_format={"type": "json_object"},
         temperature=0,
+        max_tokens=200,   # JSON response is never longer than this
     )
     data = json.loads(resp.choices[0].message.content)
 
