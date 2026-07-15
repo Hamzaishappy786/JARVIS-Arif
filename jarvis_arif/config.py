@@ -3,35 +3,30 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# User data lives in ~/.jarvis_arif/ so it survives package upgrades
-DATA_DIR = Path.home() / ".jarvis_arif"
-DATA_DIR.mkdir(exist_ok=True)
+# All runtime data stays inside the project directory
+_PROJECT_DIR = Path(__file__).parent.parent   # D:\JARVIS-ARIF
+DATA_DIR     = _PROJECT_DIR                   # kept as alias used by other modules
 
-# Load .env from user data dir, then CWD as fallback
-load_dotenv(DATA_DIR / ".env")
-load_dotenv(Path.cwd() / ".env", override=False)
+# Load .env from project root
+load_dotenv(_PROJECT_DIR / ".env")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY is missing. Add it to ~/.jarvis_arif/.env")
 
-GROQ_LLM_MODEL = "llama-3.3-70b-versatile"
+GROQ_LLM_MODEL = "llama-3.1-8b-instant"
 
-# Piper TTS — look in ~/.jarvis_arif/models/ first, then project dir
-_MODEL_NAME = "ur_PK-fasih-medium.onnx"
-_user_model = DATA_DIR / "models" / _MODEL_NAME
-_proj_model = Path(__file__).parent.parent / "models" / _MODEL_NAME
-_model_base  = _user_model if _user_model.exists() else _proj_model
+# Piper TTS model — lives in models/ inside the project
+_MODEL_NAME       = "ur_PK-fasih-medium.onnx"
+_model_base       = _PROJECT_DIR / "models" / _MODEL_NAME
 PIPER_MODEL_PATH  = str(_model_base)
 PIPER_CONFIG_PATH = str(_model_base.parent / (_MODEL_NAME + ".json"))
 
-TEMP_AUDIO_DIR = DATA_DIR / "temp_audio"
+TEMP_AUDIO_DIR = _PROJECT_DIR / "temp_audio"
 TEMP_AUDIO_DIR.mkdir(exist_ok=True)
 
-SCREENSHOT_DIR = DATA_DIR / "screenshots"
+SCREENSHOT_DIR = _PROJECT_DIR / "screenshots"
 SCREENSHOT_DIR.mkdir(exist_ok=True)
 
-LOG_DIR = DATA_DIR / "logs"
+LOG_DIR = _PROJECT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE              = LOG_DIR / "actions.log"
 CONVERSATION_LOG_FILE = LOG_DIR / "conversation.txt"
@@ -52,4 +47,7 @@ ALLOWED_ROOTS = [
     "D:/",
 ]
 
-CONFIRM_REQUIRED_ACTIONS = {"delete", "move", "close_app", "close_all"}
+CONFIRM_REQUIRED_ACTIONS = {
+    "delete", "move", "close_app", "close_all",
+    "sleep_pc", "hibernate_pc", "logoff_pc", "restart_pc", "shutdown_pc",
+}

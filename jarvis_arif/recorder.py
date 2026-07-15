@@ -14,7 +14,6 @@ _wave = TermWave(color="orange")
 
 def record_on_hotkey() -> str | None:
     """Blocks until RECORD_HOTKEY is pressed, records while held, saves a wav, returns its path."""
-    print(f"Hold [{RECORD_HOTKEY.upper()}] to talk to Arif...")
     keyboard.wait(RECORD_HOTKEY)
 
     frames = []
